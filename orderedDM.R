@@ -38,7 +38,7 @@ myFunction<-function(roads, car, packages)
   
   frontier<-list()
   frontier$data<-matrix(c(0), nrow=1, ncol=6)
-  colnames(frontier$data)<-c("index", "x", "y", "g", "h", "status")
+  colnames(frontier$data)<-c("index", "x", "y", "g", "h", "cost")
   #Each node in the frontier has an associated path. These are stored
   #in a list of length numNodes, the path for node i is the ith element in the list
   frontier$paths<-vector(mode="list", length=numNodes)
@@ -46,18 +46,21 @@ myFunction<-function(roads, car, packages)
   #Fill in the frontier details for the starting point, this will be the first entry in the frontier's data
   #and will be first to be expanded
   index<-car$x+(car$y-1)*gridSize[1]
-  #Node status can be 0 (unexplored), 1 (frontier), 2 (being explored), 3 (previously explored). Only using 1/2 now.
   frontier$paths[[index]]<-c(index)
   
   if(car$load) {
     destination<-matrix(packages[which(packages[, 5] == 1),], ncol=5)[,3:4]
-    frontier$data[1,]<-c(index=index, x=car$x, y=car$y, g=0, h=manhattanDist(car, destination), status=1)
+    h<-manhattanDist(car, destination)
+    frontier$data[1,]<-c(index=index, x=car$x, y=car$y, g=0, 
+                         h=h, cost=h)
     path<-exploreNodes(roads, destination, car, gridSize, frontier)
   }
   else {
     nextPackage<-car$mem$seq[1]
     destination<-remainingPs[nextPackage, 1:2]
-    frontier$data[1,]<-c(index=index, x=car$x, y=car$y, g=0, h=manhattanDist(car, destination), status=1)
+    h<-manhattanDist(car, destination)
+    frontier$data[1,]<-c(index=index, x=car$x, y=car$y, g=0, 
+                         h=h, cost=h)
     path<-exploreNodes(roads, destination, car, gridSize, frontier)
     
     #Use this version instead to skip pre-ordering of packages and just take greedy route (nearest first)
@@ -163,8 +166,6 @@ expandNode<-function(roads, destinations, gridSize, frontier)
     return(path)
   }
   
-  frontier$data[[1, 'status']]<-2
-  
   x<-((index-1)%%gridSize[1])+1
   y<-floor((index-1)/gridSize[1])+1
   
@@ -208,26 +209,37 @@ expandNode<-function(roads, destinations, gridSize, frontier)
         #Have we just found a better route to it?
         if(frontier$data[[frow, 'g']]>cost[i]) {
           frontier$data[[frow, 'g']]<-cost[i]
+          frontier$data[[frow, 'cost']]<-cost[i]+frontier$data[[frow, 'h']]
           frontier$paths[[neighbours[i]]]<-c(frontier$paths[[index]], neighbours[i])
         }
       }
       else {
         pos<-getCoords(neighbours[i], gridSize)
+        h<-manhattanDist(pos, destinations)
         frontier$data<-rbind(frontier$data, c(index=neighbours[i], x=pos$x, y=pos$y, 
-                                              g=cost[i], h=manhattanDist(pos, destinations), status=1))
+                                              g=cost[i], h=h, 
+                                              cost=cost[i]+h))
         frontier$paths[[neighbours[i]]]<-c(frontier$paths[[index]], neighbours[i])
       }
     }
   }
   frontier$done[[index]]<-1
-  #Now the frontier is updated, reorder it and continue. We are only interested in nodes with status 1
-  frontier$data<-frontier$data[frontier$data[,'status']==1,]
+  #Take out the node we just explored
+  frontier$data<-frontier$data[-1,]
+  #Now the frontier is updated, reorder it and continue.
   if(length(frontier$data)>6) {
     #If more than one node in frontier, reorder by g+h
-    frontier$data<-frontier$data[order(sapply(frontier$data[,"g"]+frontier$data[,"h"],head,1),decreasing=F),]
+    # frontier$data<-frontier$data[order(sapply(frontier$data[,"cost"],head,1),decreasing=F),]
+    #Reordering is very slow. Instead swap the best node with the first node.
+    nextIdx<-which.min(frontier$data[,"cost"])
+    if(nextIdx > 1) {
+      nextNode<-frontier$data[nextIdx,]
+      frontier$data[nextIdx,]<-frontier$data[1,]
+      frontier$data[1,]<-nextNode
+    }
   }
   else {
-    #if only one node is left in the frontier, need to convert back to a matrix (very rarely if ever happens)
+    #if only one node is left in the frontier, need to convert back to a matrix (very rarely happens)
     cn<-names(frontier$data)
     frontier$data<-matrix(frontier$data, ncol=6)
     colnames(frontier$data)<-cn
@@ -278,7 +290,7 @@ testSeeds<-function(seeds)
 {
   results<-c()
   for(i in 1:length(seeds)) {
-    results<-c(results, testDM(myFunction, seed=seeds[i], n=100))
+    results<-c(results, testDM(myFunction, seed=seeds[i], n=250))
   }
   results
 }
