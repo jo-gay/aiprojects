@@ -1,3 +1,8 @@
+#Artificial Intelligence Autumn 2018
+#Project 1: Delivery Man
+#Group 131: Gunnar Eggertsson & Jo Gay
+
+#Ordered AStar algorithm.
 #Decide what order to pick up the packages to minimise the total travel distance
 #ignoring traffic. Then use A* algorithm to find the route to the next pickup/dropoff
 myFunction<-function(roads, car, packages)
