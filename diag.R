@@ -1,23 +1,9 @@
-# #Since the historical data is not yet available, generate some random data to work with
-# Generate_Data<-function(numCases)
-# {
-#   numBinVars<-8
-#   oBin<-runif(numCases*numBinVars)>0.5
-#   oNorm<-rnorm(numCases, 37.5, 1)
-# 
-#   #give most of the smokers lung cancer (for testing)
-#   oBin[(6*numCases+1):(7*numCases)]<-runif(numCases)<pmax(oBin[(numCases+1):(2*numCases)]*0.9, 0.1)
-#   #give all the pneumonia sufferers a slightly high temp (for testing)
-#   oNorm<-oNorm+oBin[(4*numCases+1):(5*numCases)]
-#   #give people who visited TB spot a higher chance of TB
-#   oBin[(5*numCases+1):(6*numCases)]<-runif(numCases)<pmax(oBin[1:(numCases)]*0.75, 0.25)
-#   #give people with dispnea a higher chance of bronchitis
-#   oBin[(7*numCases+1):(8*numCases)]<-runif(numCases)<pmax(oBin[(3*numCases+1):(4*numCases)]*0.75, 0.25)
-#   
-#   matrix(c(oNorm, oBin), ncol=numBinVars+1)
-# }
+#Artificial Intelligence Autumn 2018
+#Project 3: Diagnostics
+#Group 131: Gunnar Eggertsson & Jo Gay
+#Please use runDiagnostics(learn=learn, diagnose=diagnose)
 
-#Calculate the probability of a given row of data from the network
+#Internal function to calculate the probability of a given row of data from the network
 calcProb<-function(data, network)
 {
   pEnd<-dnorm(data[[2]], mean=network$P1[2*data[[1]]+1], sd=network$P1[2*data[[1]]+2])
@@ -76,10 +62,11 @@ calcProb<-function(data, network)
   return(pEnd)
 }
 
-learnProbs<-function(historicalData)
+#learn function to be used
+learn<-function(historicalData)
 {
   #Order of columns is:
-  #2: Temperature, 3: VisitedTB, 5: Smokes, 8: X-ray, 9: Dyspnea, 1: Pneumonia, 4: TB, 6: LungCancer, 7: Bronchitis
+  #1: Pneumonia, 2: Temperature, 3: VisitedTB, 4: TB, 5: Smokes, 6: LungCancer, 7: Bronchitis, 8: X-ray, 9: Dyspnea
   #The known variables are Temperature, VisitedTB, Smokes, X-ray, Dyspnea
   #The unknown variables are Pneumonia, TB, LungCancer, Bronchitis
   #We need to estimate 
@@ -140,7 +127,8 @@ learnProbs<-function(historicalData)
   list(P1=P1,P2=P2,P3=P3,P4=P4,P5=P5,P6=P6,P7=P7,P8=P8,P9=P9)
 }
 
-diagnoseCases<-function(network, cases)
+#diagnose function to be used
+diagnose<-function(network, cases)
 {
   outcomeCols<-c(1,4,6,7)
   nCases<-dim(cases)[1]
@@ -182,30 +170,6 @@ diagnoseCases<-function(network, cases)
     #Now we have completed sampling, estimate the probabilites for the unknown variables
     probs[i,]<-colMeans(samples[,outcomeCols])
     
-    #Have a look to see what would be a good burn period (if set to zero above)
-    # subMeans<-matrix(c(colMeans(samples[1:100,outcomeCols]),colMeans(samples[101:200,outcomeCols]),colMeans(samples[201:300,outcomeCols]),
-    #             colMeans(samples[301:400,outcomeCols]),colMeans(samples[401:500,outcomeCols]),colMeans(samples[501:600,outcomeCols]),
-    #             colMeans(samples[601:700,outcomeCols]),colMeans(samples[701:800,outcomeCols]),colMeans(samples[801:900,outcomeCols]),
-    #             colMeans(samples[901:1000,outcomeCols]),colMeans(samples[1001:1100,outcomeCols]),colMeans(samples[1101:1200,outcomeCols]),
-    #             colMeans(samples[1201:1300,outcomeCols]),colMeans(samples[1301:1400,outcomeCols]),colMeans(samples[1401:1500,outcomeCols]),
-    #             colMeans(samples[1501:1600,outcomeCols]),colMeans(samples[1601:1700,outcomeCols]),colMeans(samples[1701:1800,outcomeCols]),
-    #             colMeans(samples[1801:1900,outcomeCols]),colMeans(samples[1901:2000,outcomeCols]),colMeans(samples[2001:2100,outcomeCols]),
-    #             colMeans(samples[2101:2200,outcomeCols]),colMeans(samples[2201:2300,outcomeCols]),colMeans(samples[2301:5000,outcomeCols])
-    #             ), ncol=4, byrow=T)
-    #print(subMeans)
   }
   return(probs)
-}
-
-runModel<-function()
-{
-  historical<-Generate_Data(10000)
-  network<-learnProbs(historical)
-  testCases<-Generate_Data(2)[,1:5]
-  print(network)
-  print(testCases)
-  results<-diagnoseCases(network, testCases)
-  print(results)
-  diags<-c("Pneumonia", "TB", "LungCancer", "Bronchitis")
-  print(diags[apply(results, 1, which.max)])
 }
